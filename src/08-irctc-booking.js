@@ -100,24 +100,158 @@
  */
 export async function checkSeatAvailability(trainNumber, date, classType) {
   // Your code here
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      if (!/^\d{5}$/.test(trainNumber)) {
+        return reject(new Error("Invalid train number! 5 digit hona chahiye."));
+      }
+      const validClasses = ["SL", "3A", "2A", "1A"];
+      if (!validClasses.includes(classType)) {
+        return reject(new Error("Invalid class type!"));
+      }
+
+      if (!date || typeof date !== "string") {
+        return reject(new Error("Date required hai!"));
+      }
+      const seats = Math.floor(Math.random() * 51);
+      const waitlist = Math.floor(Math.random() * 21);
+      const available = seats > 0;
+
+      resolve({
+        trainNumber,
+        date,
+        classType,
+        available,
+        seats,
+        waitlist,
+      });
+    }, 100);
+  });
 }
 
 export async function bookTicket(passenger, trainNumber, date, classType) {
   // Your code here
+  if (typeof passenger !== "object") {
+    throw new Error("Invalid passenger data!");
+  }
+
+  const { name, age, gender } = passenger;
+
+  if (!name || !age || !gender) {
+    throw new Error("Invalid passenger data!");
+  }
+  const result = await checkSeatAvailability(trainNumber, date, classType);
+  const waitlistNumber = Math.floor(Math.random() * 21);
+  const fares = {
+    SL: 250,
+    "3A": 800,
+    "2A": 1200,
+    "1A": 2000,
+  };
+  if (result.available) {
+    return {
+      pnr: "PNR" + Math.floor(100000 + Math.random() * 900000),
+      passenger,
+      trainNumber,
+      date,
+      class: classType,
+      status: "confirmed",
+      fare: fares[classType],
+    };
+  } else {
+    return {
+      status: "waitlisted",
+      waitlistNumber: Math.floor(Math.random() * 21) + 1,
+    };
+  }
 }
 
 export async function cancelTicket(pnr) {
   // Your code here
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      if (
+        typeof pnr !== "string" ||
+        !pnr.startsWith("PNR") ||
+        pnr.length <= 3
+      ) {
+        return reject(new Error("Invalid PNR number!"));
+      }
+      const refundAmount = Math.floor(Math.random() * (1000 - 100 + 1)) + 100;
+      resolve({
+        pnr,
+        status: "cancelled",
+        refund: refundAmount,
+      });
+    }, 100);
+  });
 }
 
 export async function getBookingStatus(pnr) {
   // Your code here
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      if (
+        typeof pnr !== "string" ||
+        !pnr.startsWith("PNR") ||
+        pnr.length <= 3
+      ) {
+        return reject(new Error("Invalid PNR number!"));
+      }
+      const statusArray = ["confirmed", "waitlisted", "cancelled"];
+      const status =
+        statusArray[Math.floor(Math.random() * statusArray.length)];
+      resolve({
+        pnr,
+        status,
+        lastUpdated: new Date().toISOString(),
+      });
+    }, 100);
+  });
 }
 
-export async function bookMultipleTickets(passengers, trainNumber, date, classType) {
+export async function bookMultipleTickets(
+  passengers,
+  trainNumber,
+  date,
+  classType,
+) {
   // Your code here
+  if (!Array.isArray(passengers) || passengers.length === 0) return [];
+
+  const results = [];
+
+  for (const passenger of passengers) {
+    try {
+      const result = await bookTicket(passenger, trainNumber, date, classType);
+
+      results.push(result);
+    } catch (error) {
+      results.push({
+        passenger,
+        error: error.message,
+      });
+    }
+  }
+
+  return results;
 }
 
 export async function raceBooking(trainNumbers, passenger, date, classType) {
   // Your code here
+  const promises = trainNumbers.map(async (trainNumber) => {
+    const result = await bookTicket(passenger, trainNumber, date, classType);
+
+    if (result.status === "confirmed") {
+      return result;
+    }
+
+    throw new Error("Not confirmed");
+  });
+
+  try {
+    return await Promise.any(promises);
+  } catch {
+    throw new Error("Koi bhi train mein seat nahi mili!");
+  }
 }

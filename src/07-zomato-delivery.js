@@ -86,24 +86,70 @@
  */
 export function placeOrder(restaurant, items) {
   // Your code here
+  return new Promise((resolve, reject) => {
+    if (items.length === 0 || restaurant.trim().length === 0)
+      return reject(new Error("Invalid order details!"));
+    setTimeout(() => {
+      resolve({
+        orderId: Math.floor(Math.random() * 10000),
+        restaurant,
+        items,
+        status: "placed",
+        timestamp: new Date().toISOString(),
+      });
+    }, 50);
+  });
 }
 
 export function confirmOrder(order) {
   // Your code here
+  return new Promise((resolve, reject) => {
+    if (order.orderId && order.status === "placed") {
+      resolve({ ...order, status: "confirmed", estimatedTime: 30 });
+    } else {
+      reject(new Error("Order cannot be confirmed!"));
+    }
+  });
 }
 
 export function assignRider(order) {
   // Your code here
+  const pool = ["Rahul", "Priya", "Amit", "Neha", "Vikram"];
+  const selectedRider = pool[Math.floor(Math.random() * pool.length)];
+  return new Promise((resolve, reject) => {
+    if (order.status !== "confirmed")
+      reject(new Error("Order not confirmed yet!"));
+    resolve({ ...order, rider: selectedRider, status: "assigned" });
+  });
 }
 
 export function deliverOrder(order) {
   // Your code here
+  return new Promise((resolve, reject) => {
+    if (order.status === "assigned" && order.rider) {
+      resolve({
+        ...order,
+        status: "delivered",
+        deliveredAt: new Date().toISOString(),
+      });
+    }
+    reject(new Error("No rider assigned!"));
+  });
 }
 
 export function processDelivery(restaurant, items) {
   // Your code here
+  return placeOrder(restaurant, items)
+    .then(confirmOrder)
+    .then(assignRider)
+    .then(deliverOrder)
+    .catch(error => ({ error: error.message, status: "failed" }));
 }
 
 export function processMultipleOrders(orderList) {
   // Your code here
+  const orderPromises = orderList.map(order => 
+    processDelivery(order.restaurant, order.items)
+  );
+  return Promise.allSettled(orderPromises);
 }
